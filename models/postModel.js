@@ -1,0 +1,27 @@
+import { Schema, model } from "mongoose";
+
+const postSchema = new Schema({
+  author: {
+    type: Schema.Types.ObjectId,
+    ref: "User",
+    required: false,
+  },
+  content: {
+    type: String,
+    required: false,
+    trim: true,
+    maxlength: 500,
+  },
+  media: {
+    type: [String],
+    default: [],
+  },
+  likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+export const Post = model("Post", postSchema);
