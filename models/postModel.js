@@ -12,10 +12,12 @@ const postSchema = new Schema({
     trim: true,
     maxlength: 500,
   },
-  media: {
-    type: [String],
-    default: [],
-  },
+  media: [
+    {
+      url: { type: String, required: true },
+      poster: { type: String, required: false },
+    },
+  ],
   likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
   comments: [{ type: Schema.Types.ObjectId, ref: "Comment" }],
   createdAt: {
