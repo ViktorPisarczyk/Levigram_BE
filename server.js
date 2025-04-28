@@ -11,7 +11,10 @@ import { errorHandler, notFound } from "./middlewares/errors.js";
 
 const app = express();
 
-const allowedOrigins = ["placeholder", "http://localhost:5173"];
+const allowedOrigins = [
+  "https://levigram.onrender.com/",
+  "http://localhost:5173",
+];
 
 app.use(
   cors({
