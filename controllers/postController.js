@@ -8,17 +8,24 @@ import { cloudinary } from "../config/cloudinaryConfig.js";
 export const createPost = async (req, res, next) => {
   try {
     const { content, media } = req.body;
-    const token = req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-      return res
-        .status(401)
-        .json({ message: "You must be logged in to post." });
+    if (!authHeader) {
+      return res.status(401).json({ message: "Authorization header missing." });
     }
 
-    const decoded_token = await verifyToken(token);
-    const user = await User.findById(decoded_token.id);
-    if (!user) return res.status(401).json({ message: "Invalid user." });
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ message: "Token missing." });
+    }
+
+    const decodedToken = await verifyToken(token);
+    const user = await User.findById(decodedToken.id);
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid user." });
+    }
 
     const createdPost = await Post.create({
       author: user._id,
@@ -26,15 +33,19 @@ export const createPost = async (req, res, next) => {
       media: Array.isArray(media) ? media : [],
     });
 
-    const newPost = await Post.findById(createdPost._id).populate(
+    const populatedPost = await Post.findById(createdPost._id).populate(
       "author",
       "username profilePicture"
     );
 
-    res.status(201).json(newPost);
+    if (!populatedPost) {
+      return res.status(500).json({ message: "Failed to populate post." });
+    }
+
+    res.status(201).json(populatedPost);
   } catch (error) {
-    console.error("❌ Upload-Fehler:", error);
-    res.status(500).json({ message: "Fehler beim Hochladen", error });
+    console.error("❌ Error creating post:", error);
+    res.status(500).json({ message: "Failed to create post." });
   }
 };
 
@@ -98,7 +109,14 @@ export const updatePost = async (req, res, next) => {
     const { content, media } = req.body;
     const userId = req.user;
 
+    if (!userId) {
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: No user ID provided." });
+    }
+
     const post = await Post.findById(req.params.id);
+
     if (!post) {
       return res.status(404).json({ message: "Post not found." });
     }
@@ -106,23 +124,33 @@ export const updatePost = async (req, res, next) => {
     if (post.author.toString() !== userId) {
       return res
         .status(403)
-        .json({ message: "Unauthorized: You can only update your own post." });
+        .json({ message: "You can only update your own posts." });
     }
 
-    post.content = content || post.content;
+    if (content) {
+      post.content = content;
+    }
 
-    // ↓↓↓ Neue Medienspeicherung
     if (Array.isArray(media)) {
       post.media = media;
     }
 
     const updatedPost = await post.save();
-    await updatedPost.populate("author", "username profilePicture");
+    const populatedPost = await Post.findById(updatedPost._id).populate(
+      "author",
+      "username profilePicture"
+    );
 
-    res.status(200).json(updatedPost);
+    if (!populatedPost) {
+      return res
+        .status(500)
+        .json({ message: "Failed to populate updated post." });
+    }
+
+    res.status(200).json(populatedPost);
   } catch (error) {
-    console.error("Error updating post:", error);
-    next(error);
+    console.error("❌ Error updating post:", error);
+    res.status(500).json({ message: "Failed to update post." });
   }
 };
 
