@@ -22,7 +22,7 @@ const __dirname = path.dirname(__filename);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5001",
-  "https://levigram.onrender.com",
+  "https://levigram-mono.onrender.com",
 ];
 
 app.use(
