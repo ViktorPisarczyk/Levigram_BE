@@ -23,7 +23,7 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
+        return callback(null, origin);
       } else {
         console.log("Blocked by CORS:", origin);
         return callback(new Error("Not allowed by CORS"));
