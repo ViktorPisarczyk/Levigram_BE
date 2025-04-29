@@ -1,11 +1,13 @@
 import { createToken } from "../middlewares/jwt.js";
 import { User } from "../models/userModel.js";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  maxAge: 1000 * 60 * 60 * 24 * 365, // 1 Jahr
+  secure: isProduction,
+  sameSite: isProduction ? "None" : "Lax",
+  maxAge: 1000 * 60 * 60 * 24 * 365,
 };
 
 // === SIGNUP ===
