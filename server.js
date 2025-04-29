@@ -3,8 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
-import path from "path";
-import { fileURLToPath } from "url";
 
 import { userRouter } from "./routes/userRouter.js";
 import { postRouter } from "./routes/postRouter.js";
@@ -14,9 +12,6 @@ import { errorHandler, notFound } from "./middlewares/errors.js";
 dotenv.config();
 
 const app = express();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // --- CORS Config ---
 const allowedOrigins = [
@@ -47,14 +42,6 @@ app.use(express.json());
 app.use("/users", userRouter);
 app.use("/posts", postRouter);
 app.use("/comments", commentRouter);
-
-// --- Serve frontend static files ---
-app.use(express.static(path.join(__dirname, "dist")));
-
-// --- Fallback for React Router (SPA) ---
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
-});
 
 // --- Error Handling ---
 app.use(notFound);
