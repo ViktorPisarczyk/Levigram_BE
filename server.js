@@ -20,7 +20,7 @@ const __dirname = path.dirname(__filename);
 
 // --- CORS Config ---
 const allowedOrigins = [
-  "https://levigram.onrender.com",
+  "https://levigram-mono.onrender.com",
   "http://localhost:5173",
 ];
 
