@@ -176,18 +176,21 @@ export const likePost = async (req, res) => {
     const userId = req.user?.toString();
     if (!userId) return res.status(400).json({ message: "Invalid user ID" });
 
+    post.likes = [...new Set(post.likes.map((id) => id.toString()))];
+
     const hasLiked = post.likes.includes(userId);
 
     if (hasLiked) {
-      post.likes = post.likes.filter((like) => like !== userId);
+      post.likes = post.likes.filter((like) => like.toString() !== userId);
     } else {
       post.likes.push(userId);
     }
 
     await post.save();
 
-    res.json({ success: true });
+    res.json({ success: true, likes: post.likes.length });
   } catch (error) {
+    console.error("Like error:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };

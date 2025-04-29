@@ -2,8 +2,7 @@ import { verifyToken } from "./jwt.js";
 
 export const protect = async (req, res, next) => {
   try {
-    let token =
-      req.cookies.access_token || req.headers.authorization?.split(" ")[1];
+    const token = req.cookies.access_token;
 
     if (!token) {
       console.error("No token provided");

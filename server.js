@@ -14,7 +14,10 @@ dotenv.config();
 const app = express();
 
 // --- CORS Config ---
-const allowedOrigins = ["https://levigram.onrender.com"];
+const allowedOrigins = [
+  "https://levigram.onrender.com",
+  "http://localhost:5173",
+];
 
 app.use(
   cors({

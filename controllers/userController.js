@@ -21,7 +21,13 @@ export const signup = async (req, res, next) => {
       return res.status(403).json({ message: "Invalid invitation code." });
     }
 
-    const token = await createToken({ id: newUser._id, role: newUser.role });
+    const token = await createToken({
+      id: newUser._id,
+      username: newUser.username,
+      email: newUser.email,
+      role: newUser.role,
+      profilePicture: newUser.profilePicture || "",
+    });
 
     res.cookie("access_token", token, cookieOptions).send({ newUser, token });
   } catch (error) {
@@ -49,7 +55,13 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ message: "Incorrect password" });
     }
 
-    const token = await createToken({ id: user._id, role: user.role });
+    const token = await createToken({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture || "",
+    });
     res
       .cookie("access_token", token, cookieOptions)
       .send({ message: "Login successful!", user, token });
