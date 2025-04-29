@@ -5,9 +5,10 @@ const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  maxAge: 1000 * 60 * 60 * 24 * 365,
+  maxAge: 1000 * 60 * 60 * 24 * 365, // 1 Jahr
 };
 
+// === SIGNUP ===
 export const signup = async (req, res, next) => {
   try {
     const { username, email, password, inviteCode } = req.body;
@@ -28,12 +29,14 @@ export const signup = async (req, res, next) => {
 
     res
       .cookie("access_token", token, cookieOptions)
-      .send({ message: "Signup successful!", user: newUser, token });
+      .status(201)
+      .json({ message: "Signup successful!", user: newUser });
   } catch (error) {
     next(error);
   }
 };
 
+// === LOGIN ===
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -41,17 +44,17 @@ export const login = async (req, res, next) => {
     if (!email || !password) {
       return res
         .status(400)
-        .json({ message: "Email and password are required" });
+        .json({ message: "Email and password are required." });
     }
 
-    const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "Email not found" });
+      return res.status(404).json({ message: "Email not found." });
     }
 
     const matchedPWD = await user.auth(password);
     if (!matchedPWD) {
-      return res.status(401).json({ message: "Incorrect password" });
+      return res.status(401).json({ message: "Incorrect password." });
     }
 
     const token = await createToken({
@@ -61,101 +64,103 @@ export const login = async (req, res, next) => {
       role: user.role,
       profilePicture: user.profilePicture || "",
     });
+
     res
       .cookie("access_token", token, cookieOptions)
-      .send({ message: "Login successful!", user, token });
+      .status(200)
+      .json({ message: "Login successful!", user });
   } catch (error) {
     console.error("Login error:", error);
     next(error);
   }
 };
 
-export const logout = async (req, res) => {
+// === LOGOUT ===
+export const logout = (req, res) => {
   try {
     res.clearCookie("access_token", {
       httpOnly: true,
-      secure: true,
-      sameSite: "strict",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "None",
     });
     res.status(200).json({ message: "Logout successful!" });
   } catch (error) {
-    res.status(500).json({ message: "Logout failed" });
+    res.status(500).json({ message: "Logout failed." });
   }
 };
 
+// === GET ALL USERS ===
 export const getUsers = async (req, res, next) => {
   try {
     const users = await User.find();
-    res.send(users);
+    res.json(users);
   } catch (error) {
     next(error);
   }
 };
 
+// === GET SINGLE USER ===
 export const getSingleUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select("-password");
 
     if (!user) {
-      const error = new Error("no user found");
-      error.status = "404";
-      throw error;
+      return res.status(404).json({ message: "User not found." });
     }
-    res.send(user);
+
+    res.json(user);
   } catch (error) {
     next(error);
   }
 };
 
+// === UPDATE USER ===
 export const updateUser = async (req, res, next) => {
   try {
     const userId = req.params.id || req.user;
     const { username, profilePicture } = req.body;
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found." });
 
     if (username) user.username = username;
     if (profilePicture) user.profilePicture = profilePicture;
 
-    await user.save();
+    const updatedUser = await user.save();
 
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      { username, profilePicture },
-      { new: true }
-    );
-
-    res.status(200).json({ user: updatedUser });
+    res.status(200).json({ message: "Profile updated.", user: updatedUser });
   } catch (error) {
-    console.error("❌ Fehler beim Aktualisieren des Users:", error);
-    res.status(500).json({ message: "Fehler beim Aktualisieren des Profils" });
+    console.error("Update User error:", error);
+    res.status(500).json({ message: "Failed to update profile." });
   }
 };
 
+// === DELETE USER ===
 export const deleteUser = async (req, res, next) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);
     const remainingUsers = await User.find();
-    res.send({ remainingUsers, deletedUser: user });
+    res.json({ remainingUsers, deletedUser: user });
   } catch (error) {
     next(error);
   }
 };
 
+// === GET LOGGED IN USER ===
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user).select("-password");
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found." });
     }
 
-    res.status(200).json({ user });
+    res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
 
+// === RESET PASSWORD ===
 export const resetPassword = async (req, res, next) => {
   try {
     const { email, newPassword } = req.body;
@@ -163,13 +168,13 @@ export const resetPassword = async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ message: "E-Mail not found." });
+      return res.status(404).json({ message: "Email not found." });
     }
 
     user.password = newPassword;
     await user.save();
 
-    res.status(200).json({ message: "Passwort changed successfully." });
+    res.status(200).json({ message: "Password changed successfully." });
   } catch (error) {
     next(error);
   }

@@ -1,27 +1,25 @@
 import { verifyToken } from "./jwt.js";
 
 export const protect = async (req, res, next) => {
+  const token = req.cookies.access_token;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided." });
+  }
+
   try {
-    const token = req.cookies.access_token;
+    const decoded = await verifyToken(token);
 
-    if (!token) {
-      console.error("No token provided");
-      return res.status(401).json({ message: "No token provided" });
+    if (!decoded?.id) {
+      return res.status(401).json({ message: "Invalid token." });
     }
 
-    const decodedToken = await verifyToken(token);
-
-    if (!decodedToken || !decodedToken.id) {
-      console.error("Invalid token or missing user ID");
-      return res.status(401).json({ message: "Invalid token" });
-    }
-
-    req.user = decodedToken.id;
+    req.user = decoded.id;
     next();
   } catch (error) {
     console.error("Authentication error:", error.message);
-    return res
+    res
       .status(401)
-      .json({ message: "Unauthorized", error: error.message });
+      .json({ message: "Unauthorized: Invalid token.", error: error.message });
   }
 };

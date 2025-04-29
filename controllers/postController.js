@@ -1,22 +1,20 @@
 import { Post } from "../models/postModel.js";
 import { Comment } from "../models/commentModel.js";
-import { verifyToken } from "../middlewares/jwt.js";
 import { User } from "../models/userModel.js";
 
 // === Create Post ===
 export const createPost = async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized. User not found." });
+    }
+
     const { content, media } = req.body;
-    const authHeader = req.headers.authorization;
+    const user = await User.findById(req.user);
 
-    if (!authHeader)
-      return res.status(401).json({ message: "Authorization header missing." });
-    const token = authHeader.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "Token missing." });
-
-    const decodedToken = await verifyToken(token);
-    const user = await User.findById(decodedToken.id);
-    if (!user) return res.status(401).json({ message: "Invalid user." });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid user." });
+    }
 
     const formattedMedia = (media || []).map((m) => ({
       url: m.url,
@@ -33,10 +31,6 @@ export const createPost = async (req, res, next) => {
       "author",
       "username profilePicture"
     );
-
-    if (!populatedPost) {
-      return res.status(500).json({ message: "Failed to populate post." });
-    }
 
     res.status(201).json(populatedPost);
   } catch (error) {
@@ -100,11 +94,6 @@ export const updatePost = async (req, res, next) => {
     const { content, media } = req.body;
     const userId = req.user;
 
-    if (!userId)
-      return res
-        .status(401)
-        .json({ message: "Unauthorized: No user ID provided." });
-
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found." });
 
@@ -128,12 +117,6 @@ export const updatePost = async (req, res, next) => {
       "author",
       "username profilePicture"
     );
-
-    if (!populatedPost) {
-      return res
-        .status(500)
-        .json({ message: "Failed to populate updated post." });
-    }
 
     res.status(200).json(populatedPost);
   } catch (error) {
@@ -173,24 +156,26 @@ export const likePost = async (req, res) => {
     const post = await Post.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    const userId = req.user?.toString();
+    const userId = req.user;
     if (!userId) return res.status(400).json({ message: "Invalid user ID" });
 
     post.likes = [...new Set(post.likes.map((id) => id.toString()))];
 
-    const hasLiked = post.likes.includes(userId);
+    const hasLiked = post.likes.includes(userId.toString());
 
     if (hasLiked) {
-      post.likes = post.likes.filter((like) => like.toString() !== userId);
+      post.likes = post.likes.filter(
+        (like) => like.toString() !== userId.toString()
+      );
     } else {
-      post.likes.push(userId);
+      post.likes.push(userId.toString());
     }
 
     await post.save();
 
     res.json({ success: true, likes: post.likes.length });
   } catch (error) {
-    console.error("Like error:", error);
+    console.error("❌ Like error:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
@@ -271,7 +256,7 @@ export const searchPosts = async (req, res) => {
 
     res.status(200).json(posts);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Search error:", error);
     res.status(500).json({ message: "Search failed." });
   }
 };
