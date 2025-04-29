@@ -1,25 +1,22 @@
 import { createToken } from "../middlewares/jwt.js";
 import { User } from "../models/userModel.js";
 
-let cookieOptions = {
-  secure: true,
+const cookieOptions = {
   httpOnly: true,
-  sameSite: "Strict",
-  maxAge: 3600000,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  maxAge: 1000 * 60 * 60 * 24 * 365,
 };
 
 export const signup = async (req, res, next) => {
   try {
     const { username, email, password, inviteCode } = req.body;
-    const newUser = await User.create({
-      username,
-      email,
-      password,
-    });
 
     if (inviteCode !== process.env.REGISTER_CODE) {
       return res.status(403).json({ message: "Invalid invitation code." });
     }
+
+    const newUser = await User.create({ username, email, password });
 
     const token = await createToken({
       id: newUser._id,
@@ -29,7 +26,9 @@ export const signup = async (req, res, next) => {
       profilePicture: newUser.profilePicture || "",
     });
 
-    res.cookie("access_token", token, cookieOptions).send({ newUser, token });
+    res
+      .cookie("access_token", token, cookieOptions)
+      .send({ message: "Signup successful!", user: newUser, token });
   } catch (error) {
     next(error);
   }
