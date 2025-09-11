@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 import { userRouter } from "./routes/userRouter.js";
 import { postRouter } from "./routes/postRouter.js";
 import { commentRouter } from "./routes/commentRouter.js";
+import { pushRouter } from "./routes/pushRouter.js";
 import { errorHandler, notFound } from "./middlewares/errors.js";
 
 dotenv.config();
@@ -48,6 +49,7 @@ app.use(express.json());
 app.use("/users", userRouter);
 app.use("/posts", postRouter);
 app.use("/comments", commentRouter);
+app.use("/push", pushRouter);
 
 // --- Serve Frontend ---
 const frontendPath = path.join(__dirname, "dist");

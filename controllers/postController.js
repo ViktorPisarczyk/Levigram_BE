@@ -1,6 +1,33 @@
 import { Post } from "../models/postModel.js";
 import { Comment } from "../models/commentModel.js";
 import { User } from "../models/userModel.js";
+import { Subscription } from "../models/subscriptionModel.js";
+import { sendPush, buildNotificationPayload } from "../config/webpush.js";
+
+async function notifyAllNewPost(postDoc, authorName) {
+  const payload = buildNotificationPayload({
+    title: `${authorName} hat etwas gepostet`,
+    body: postDoc.content?.slice(0, 90) || "Neuer Beitrag",
+    url: "/home",
+  });
+
+  const subs = await Subscription.find().lean();
+  if (!subs.length) return;
+
+  const results = await Promise.allSettled(
+    subs.map(({ sub }) => sendPush(sub, payload))
+  );
+
+  const deletions = [];
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled" && r.value?.gone) {
+      deletions.push(
+        Subscription.findOneAndDelete({ "sub.endpoint": subs[i].sub.endpoint })
+      );
+    }
+  });
+  if (deletions.length) await Promise.all(deletions);
+}
 
 // === Create Post ===
 export const createPost = async (req, res, next) => {
@@ -33,6 +60,11 @@ export const createPost = async (req, res, next) => {
     );
 
     res.status(201).json(populatedPost);
+
+    notifyAllNewPost(
+      populatedPost,
+      populatedPost.author?.username || "Jemand"
+    ).catch((e) => console.error("Push broadcast failed:", e));
   } catch (error) {
     console.error("❌ Error creating post:", error);
     res.status(500).json({ message: "Failed to create post." });
