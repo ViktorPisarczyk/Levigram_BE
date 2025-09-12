@@ -1,10 +1,10 @@
 {
   "name": "Levigram",
   "short_name": "Levigram",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2db0db",
+  "theme_color": "#ffffff",
   "orientation": "portrait-primary",
   "description": "Levigram",
   "icons": [
