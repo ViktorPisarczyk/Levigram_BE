@@ -3,18 +3,23 @@ import { sendPush, buildNotificationPayload } from "../config/webpush.js";
 
 export async function subscribe(req, res, next) {
   try {
+    console.log("[subscribe] req.user =", req.user);
+    if (!req.user) return res.status(401).json({ message: "Auth required" });
+
     const sub = req.body;
     if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) {
       return res.status(400).json({ message: "Invalid subscription payload" });
     }
 
-    await Subscription.findOneAndUpdate(
+    const doc = await Subscription.findOneAndUpdate(
       { "sub.endpoint": sub.endpoint },
-      { sub, updatedAt: Date.now() },
+      { sub, user: req.user, updatedAt: Date.now() },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    return res.sendStatus(201);
+    return res
+      .status(201)
+      .json({ ok: true, saved: { id: doc._id, user: doc.user } }); // TEMP-RESPONSE
   } catch (err) {
     next(err);
   }

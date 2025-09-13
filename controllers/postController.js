@@ -4,14 +4,17 @@ import { User } from "../models/userModel.js";
 import { Subscription } from "../models/subscriptionModel.js";
 import { sendPush, buildNotificationPayload } from "../config/webpush.js";
 
-async function notifyAllNewPost(postDoc, authorName) {
+async function notifyAllNewPost(postDoc, authorId, authorName) {
   const payload = buildNotificationPayload({
-    title: `${authorName} hat etwas gepostet`,
-    body: postDoc.content?.slice(0, 90) || "Neuer Beitrag",
+    title: `${authorName} hat etwas neues auf Levigram gepostet`,
+    body: (postDoc?.content || "").toString().slice(0, 90) || "Neuer Beitrag",
     url: "/home",
+    icon: "/icons/icon-192x192.png",
+    badge: "/icons/icon-192x192.png",
   });
 
-  const subs = await Subscription.find().lean();
+  const subs = await Subscription.find({ user: { $ne: authorId } }).lean();
+
   if (!subs.length) return;
 
   const results = await Promise.allSettled(
@@ -38,10 +41,7 @@ export const createPost = async (req, res, next) => {
 
     const { content, media } = req.body;
     const user = await User.findById(req.user);
-
-    if (!user) {
-      return res.status(401).json({ message: "Invalid user." });
-    }
+    if (!user) return res.status(401).json({ message: "Invalid user." });
 
     const formattedMedia = (media || []).map((m) => ({
       url: m.url,
@@ -63,6 +63,7 @@ export const createPost = async (req, res, next) => {
 
     notifyAllNewPost(
       populatedPost,
+      user._id,
       populatedPost.author?.username || "Jemand"
     ).catch((e) => console.error("Push broadcast failed:", e));
   } catch (error) {
