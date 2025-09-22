@@ -28,3 +28,7 @@ It powers authentication, posts, comments, likes, and push notifications, and se
 - **Cloudinary**
 - **Cookie Parser**
 - **CORS, dotenv**
+
+---
+
+👉 [Go to the frontend repository](https://github.com/ViktorPisarczyk/Levigram_FE)
