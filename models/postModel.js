@@ -26,4 +26,7 @@ const postSchema = new Schema({
   },
 });
 
+postSchema.index({ createdAt: 1 });
+postSchema.index({ content: "text" });
+
 export const Post = model("Post", postSchema);

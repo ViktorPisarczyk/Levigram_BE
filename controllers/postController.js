@@ -3,6 +3,7 @@ import { Comment } from "../models/commentModel.js";
 import { User } from "../models/userModel.js";
 import { Subscription } from "../models/subscriptionModel.js";
 import { sendPush, buildNotificationPayload } from "../config/webpush.js";
+import { parseDateQuery } from "../utils/parseDateQuery.js";
 
 async function notifyAllNewPost(postDoc, authorId, authorName) {
   const payload = buildNotificationPayload({
@@ -281,13 +282,53 @@ export const getPostsByUser = async (req, res) => {
 // === Search Posts ===
 export const searchPosts = async (req, res) => {
   try {
-    const query = req.query.query || "";
+    const raw = String(req.query.query || "").trim();
+    const page = Math.max(1, parseInt(req.query.page || "1", 10));
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit || "10", 10))
+    );
+    const skip = (page - 1) * limit;
 
-    const posts = await Post.find({
-      content: { $regex: query, $options: "i" },
-    }).populate("author", "username profilePicture");
+    const parsed = parseDateQuery(raw);
+    const filter = {};
 
-    res.status(200).json(posts);
+    if (
+      parsed.kind === "date" ||
+      parsed.kind === "month" ||
+      parsed.kind === "year"
+    ) {
+      filter.createdAt = { $gte: parsed.range.from, $lt: parsed.range.to };
+      if (parsed.text && parsed.text.trim()) {
+        filter.$or = [
+          { $text: { $search: parsed.text } },
+          { content: { $regex: parsed.text, $options: "i" } },
+        ];
+      }
+    } else if (parsed.kind === "text" && parsed.text) {
+      filter.$or = [
+        { $text: { $search: parsed.text } },
+        { content: { $regex: parsed.text, $options: "i" } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      Post.find(filter)
+        .populate("author", "username profilePicture")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      items,
+      total,
+      page,
+      limit,
+      hasMore: total > skip + items.length,
+    });
   } catch (error) {
     console.error("❌ Search error:", error);
     res.status(500).json({ message: "Search failed." });
