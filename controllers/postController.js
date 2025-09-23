@@ -280,6 +280,10 @@ export const getPostsByUser = async (req, res) => {
 };
 
 // === Search Posts ===
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export const searchPosts = async (req, res) => {
   try {
     const raw = String(req.query.query || "").trim();
@@ -299,17 +303,14 @@ export const searchPosts = async (req, res) => {
       parsed.kind === "year"
     ) {
       filter.createdAt = { $gte: parsed.range.from, $lt: parsed.range.to };
-      if (parsed.text && parsed.text.trim()) {
-        filter.$or = [
-          { $text: { $search: parsed.text } },
-          { content: { $regex: parsed.text, $options: "i" } },
-        ];
-      }
-    } else if (parsed.kind === "text" && parsed.text) {
-      filter.$or = [
-        { $text: { $search: parsed.text } },
-        { content: { $regex: parsed.text, $options: "i" } },
-      ];
+    }
+
+    const text = (
+      (parsed.text ?? (parsed.kind === "text" ? parsed.text : "")) ||
+      ""
+    ).trim();
+    if (text) {
+      filter.content = { $regex: escapeRegex(text), $options: "i" };
     }
 
     const [items, total] = await Promise.all([
