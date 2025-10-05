@@ -7,7 +7,7 @@ import { parseDateQuery } from "../utils/parseDateQuery.js";
 
 async function notifyAllNewPost(postDoc, authorId, authorName) {
   const payload = buildNotificationPayload({
-    title: `${authorName} hat etwas neues auf Levigram gepostet`,
+    title: `Neuer Beitrag von ${authorName}`,
     body: (postDoc?.content || "").toString().slice(0, 90) || "Neuer Beitrag",
     url: "/home",
     icon: "/icons/icon-192x192.png",
