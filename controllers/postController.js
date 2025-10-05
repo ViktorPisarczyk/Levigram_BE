@@ -335,3 +335,19 @@ export const searchPosts = async (req, res) => {
     res.status(500).json({ message: "Search failed." });
   }
 };
+
+// === Get Likes (populated) by Post ===
+export const getLikesByPostId = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id).populate(
+      "likes",
+      "username profilePicture"
+    );
+    if (!post) return res.status(404).json({ message: "Post not found." });
+
+    res.status(200).json({ likes: post.likes || [] });
+  } catch (error) {
+    console.error("Error fetching likes:", error);
+    res.status(500).json({ message: "Error fetching likes" });
+  }
+};
