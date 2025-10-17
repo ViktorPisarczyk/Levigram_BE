@@ -10,7 +10,10 @@ self.addEventListener("activate", (event) => {
   }
 });
 
-self.addEventListener("fetch", (event) => {});
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+});
 
 /* -- Receive Web-Push -- */
 self.addEventListener("push", (event) => {
