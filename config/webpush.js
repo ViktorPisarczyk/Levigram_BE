@@ -24,6 +24,7 @@ export async function sendPush(subscription, payload) {
   try {
     await webpush.sendNotification(subscription, JSON.stringify(payload), {
       TTL: DEFAULT_TTL,
+      timeout: 10_000,
     });
     return { ok: true };
   } catch (err) {
