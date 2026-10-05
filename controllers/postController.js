@@ -11,7 +11,7 @@ async function notifyAllNewPost(postDoc, authorId, authorName) {
     body: (postDoc?.content || "").toString().slice(0, 90) || "Neuer Beitrag",
     url: "/home",
     icon: "/icons/icon-192x192.png",
-    badge: "/icons/icon-192x192.png",
+    badge: "/icons/badge-96x96.png",
   });
 
   const subs = await Subscription.find({ user: { $ne: authorId } }).lean();

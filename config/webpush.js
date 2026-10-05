@@ -45,7 +45,7 @@ export function buildNotificationPayload({
   body = "New activity",
   url = "/",
   icon = "/icons/icon-192x192.png",
-  badge = "/icons/icon-192x192.png",
+  badge = "/icons/badge-96x96.png",
 } = {}) {
   return { title, body, url, icon, badge };
 }

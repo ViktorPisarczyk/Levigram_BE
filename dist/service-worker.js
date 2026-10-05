@@ -24,7 +24,7 @@ self.addEventListener("push", (event) => {
     body = "New post",
     url = "/",
     icon = "/icons/icon-192x192.png",
-    badge = "/icons/icon-192x192.png", // Android/Chrome: separate Badge-Icon
+    badge = "/icons/badge-96x96.png", // Android/Chrome: separate Badge-Icon
   } = data;
 
   event.waitUntil(
