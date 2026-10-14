@@ -60,13 +60,14 @@ async function setBadgeForBackgroundPush() {
         client.url.startsWith(self.registration.scope)
     );
 
-    // Android derives its launcher dot from active notifications; the
-    // Badging API is used by supported platforms such as iOS Home Screen apps.
+    // Android derives its launcher dot from active notifications. On platforms
+    // with the Badging API, use a marker without a count to avoid implying that
+    // the number of unread posts is known.
     if (
       !visibleAppClient &&
       typeof self.navigator?.setAppBadge === "function"
     ) {
-      await self.navigator.setAppBadge(1);
+      await self.navigator.setAppBadge();
     }
 
     return visibleAppClient;
