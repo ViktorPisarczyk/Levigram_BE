@@ -28,14 +28,53 @@ self.addEventListener("push", (event) => {
   } = data;
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon,
-      badge,
-      data: { url },
-    })
+    (async () => {
+      const visibleAppClient = await setBadgeForBackgroundPush();
+
+      await self.registration.showNotification(title, {
+        body,
+        icon,
+        badge,
+        tag: "levigram-new-post",
+        data: { url },
+      });
+
+      // Android uses active notifications for its launcher dot. Tell an
+      // already-open app to dismiss this notification so it stays in sync.
+      if (visibleAppClient) {
+        visibleAppClient.postMessage({ type: "LEVI_NEW_POST_RECEIVED" });
+      }
+    })()
   );
 });
+
+async function setBadgeForBackgroundPush() {
+  try {
+    const appClients = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+    const visibleAppClient = appClients.find(
+      (client) =>
+        client.visibilityState === "visible" &&
+        client.url.startsWith(self.registration.scope)
+    );
+
+    // Android derives its launcher dot from active notifications; the
+    // Badging API is used by supported platforms such as iOS Home Screen apps.
+    if (
+      !visibleAppClient &&
+      typeof self.navigator?.setAppBadge === "function"
+    ) {
+      await self.navigator.setAppBadge(1);
+    }
+
+    return visibleAppClient;
+  } catch {
+    // Badge support is optional; it must not prevent the push notification.
+    return undefined;
+  }
+}
 
 /* -- Handle notification click -- */
 self.addEventListener("notificationclick", (event) => {
