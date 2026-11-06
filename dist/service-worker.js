@@ -87,11 +87,12 @@ async function updateAppIndicatorsForPush() {
       client.url.startsWith(self.registration.scope)
   );
 
-  // Android derives its launcher dot from the active notification. Platforms
-  // with the Badging API (including installed iOS web apps) get a dot marker.
+  // Android derives its launcher dot from the active notification. iOS needs
+  // a positive value to show an app badge, so use 1 as a presence marker rather
+  // than a count of all new posts.
   if (!visibleAppClient && typeof self.navigator?.setAppBadge === "function") {
     try {
-      await self.navigator.setAppBadge();
+      await self.navigator.setAppBadge(1);
       console.info("[Levigram push] App badge set");
     } catch (error) {
       console.warn("[Levigram push] App badge API failed", error);
