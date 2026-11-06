@@ -51,18 +51,40 @@ export async function broadcast(req, res, next) {
     );
 
     const deletions = [];
+    let accepted = 0;
+    let failed = 0;
     results.forEach((r, i) => {
-      if (r.status === "fulfilled" && r.value?.gone) {
+      if (r.status === "rejected") {
+        failed += 1;
+        return;
+      }
+
+      if (r.value?.gone) {
         deletions.push(
           Subscription.findOneAndDelete({
             "sub.endpoint": subs[i].sub.endpoint,
           })
         );
+      } else if (r.value?.ok) {
+        accepted += 1;
       }
     });
     if (deletions.length) await Promise.all(deletions);
 
-    return res.json({ ok: true, sent: subs.length });
+    console.info("[push] Broadcast delivery results", {
+      attempted: subs.length,
+      accepted,
+      expired: deletions.length,
+      failed,
+    });
+
+    return res.json({
+      ok: failed === 0,
+      attempted: subs.length,
+      sent: accepted,
+      expired: deletions.length,
+      failed,
+    });
   } catch (err) {
     next(err);
   }

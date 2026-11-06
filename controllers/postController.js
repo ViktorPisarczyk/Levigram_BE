@@ -16,21 +16,39 @@ async function notifyAllNewPost(postDoc, authorId, authorName) {
 
   const subs = await Subscription.find({ user: { $ne: authorId } }).lean();
 
-  if (!subs.length) return;
+  if (!subs.length) {
+    console.info("[push] New-post notification skipped: no subscriptions");
+    return;
+  }
 
   const results = await Promise.allSettled(
     subs.map(({ sub }) => sendPush(sub, payload))
   );
 
   const deletions = [];
+  let accepted = 0;
+  let failed = 0;
   results.forEach((r, i) => {
-    if (r.status === "fulfilled" && r.value?.gone) {
+    if (r.status === "rejected") {
+      failed += 1;
+      return;
+    }
+
+    if (r.value?.gone) {
       deletions.push(
         Subscription.findOneAndDelete({ "sub.endpoint": subs[i].sub.endpoint })
       );
+    } else if (r.value?.ok) {
+      accepted += 1;
     }
   });
   if (deletions.length) await Promise.all(deletions);
+  console.info("[push] New-post delivery results", {
+    attempted: subs.length,
+    accepted,
+    expired: deletions.length,
+    failed,
+  });
 }
 
 // === Create Post ===

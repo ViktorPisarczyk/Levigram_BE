@@ -27,54 +27,78 @@ self.addEventListener("push", (event) => {
     badge = "/icons/badge-96x96.png", // Android/Chrome: separate Badge-Icon
   } = data;
 
-  event.waitUntil(
-    (async () => {
-      const visibleAppClient = await setBadgeForBackgroundPush();
+  console.info("[Levigram push] Push event received");
 
-      await self.registration.showNotification(title, {
-        body,
-        icon,
-        badge,
-        tag: "levigram-new-post",
-        data: { url },
-      });
+  // Start displaying the notification immediately. Badge APIs and client
+  // enumeration are optional and must never delay the user-visible push.
+  const notificationPromise = self.registration
+    .showNotification(title, {
+      body,
+      icon,
+      badge,
+      tag: "levigram-new-post",
+      data: { url },
+    })
+    .then(() => {
+      console.info("[Levigram push] Notification displayed");
+    })
+    .catch((error) => {
+      console.error("[Levigram push] Could not display notification", error);
+      throw error;
+    });
 
-      // Android uses active notifications for its launcher dot. Tell an
-      // already-open app to dismiss this notification so it stays in sync.
+  const indicatorPromise = updateAppIndicatorsForPush()
+    .then((visibleAppClient) => {
+      // When the app is already foregrounded, let it clear the notification
+      // after showNotification has completed, avoiding a close-before-show race.
       if (visibleAppClient) {
-        visibleAppClient.postMessage({ type: "LEVI_NEW_POST_RECEIVED" });
+        notificationPromise
+          .then(() => {
+            visibleAppClient.postMessage({ type: "LEVI_NEW_POST_RECEIVED" });
+          })
+          .catch(() => {
+            // The notification failure is logged by notificationPromise.
+          });
       }
-    })()
-  );
+    })
+    .catch((error) => {
+      // A badge failure must not prevent or reject notification delivery.
+      console.warn("[Levigram push] Could not update app badge", error);
+    });
+
+  event.waitUntil(Promise.allSettled([notificationPromise, indicatorPromise]));
 });
 
-async function setBadgeForBackgroundPush() {
+async function updateAppIndicatorsForPush() {
+  let appClients;
   try {
-    const appClients = await self.clients.matchAll({
+    appClients = await self.clients.matchAll({
       type: "window",
       includeUncontrolled: true,
     });
-    const visibleAppClient = appClients.find(
-      (client) =>
-        client.visibilityState === "visible" &&
-        client.url.startsWith(self.registration.scope)
-    );
-
-    // Android derives its launcher dot from active notifications. On platforms
-    // with the Badging API, use a marker without a count to avoid implying that
-    // the number of unread posts is known.
-    if (
-      !visibleAppClient &&
-      typeof self.navigator?.setAppBadge === "function"
-    ) {
-      await self.navigator.setAppBadge();
-    }
-
-    return visibleAppClient;
   } catch {
-    // Badge support is optional; it must not prevent the push notification.
+    console.warn("[Levigram push] Could not inspect app clients");
     return undefined;
   }
+
+  const visibleAppClient = appClients.find(
+    (client) =>
+      client.visibilityState === "visible" &&
+      client.url.startsWith(self.registration.scope)
+  );
+
+  // Android derives its launcher dot from the active notification. Platforms
+  // with the Badging API (including installed iOS web apps) get a dot marker.
+  if (!visibleAppClient && typeof self.navigator?.setAppBadge === "function") {
+    try {
+      await self.navigator.setAppBadge();
+      console.info("[Levigram push] App badge set");
+    } catch (error) {
+      console.warn("[Levigram push] App badge API failed", error);
+    }
+  }
+
+  return visibleAppClient;
 }
 
 /* -- Handle notification click -- */

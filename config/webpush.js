@@ -11,8 +11,8 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
-// Push messages should not stay in the queue forever
-const DEFAULT_TTL = 300;
+// Keep new-post notifications available while devices are temporarily offline.
+const DEFAULT_TTL = 60 * 60 * 24;
 
 /**
  * Sends a Web-Push Notification
@@ -24,14 +24,32 @@ export async function sendPush(subscription, payload) {
   try {
     await webpush.sendNotification(subscription, JSON.stringify(payload), {
       TTL: DEFAULT_TTL,
+      urgency: "high",
       timeout: 10_000,
     });
     return { ok: true };
   } catch (err) {
     // 404/410 = Subscription no longer exists (e.g. app deleted)
     if (err?.statusCode === 404 || err?.statusCode === 410) {
+      console.info("[webpush] Removing expired subscription", {
+        statusCode: err.statusCode,
+      });
       return { ok: false, gone: true };
     }
+
+    let providerReason;
+    if (typeof err?.body === "string") {
+      try {
+        providerReason = JSON.parse(err.body)?.reason;
+      } catch {
+        // Provider responses are not always JSON.
+      }
+    }
+    console.error("[webpush] Delivery request failed", {
+      statusCode: err?.statusCode ?? null,
+      code: err?.code ?? null,
+      providerReason: providerReason ?? null,
+    });
     throw err;
   }
 }
